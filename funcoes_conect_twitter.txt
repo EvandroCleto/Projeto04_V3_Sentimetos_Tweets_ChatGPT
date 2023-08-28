@@ -1,0 +1,130 @@
+
+from pyspark.sql import SparkSession
+from pyspark.streaming import StreamingContext
+from pyspark.streaming.twitter import TwitterUtils
+
+# Configurar as credenciais do Twitter
+consumer_key = "<seu_consumer_key>"
+consumer_secret = "<seu_consumer_secret>"
+access_token = "<seu_access_token>"
+access_token_secret = "<seu_access_token_secret>"
+
+# Configurar a sessão do Spark
+spark = SparkSession.builder.appName("TwitterSentimentAnalysis").getOrCreate()
+sc = spark.sparkContext
+sc.setLogLevel("ERROR")
+
+# Configurar o streaming
+ssc = StreamingContext(sc, 5)  # StreamingContext com intervalo de 5 segundos
+
+# Autenticar no Twitter
+auth = OAuth1(consumer_key, consumer_secret, access_token, access_token_secret)
+twitter_stream = TwitterUtils.createStream(ssc, auth)
+
+
+# Filtrar tweets por termo de busca
+search_term = 'chatgpt'  # Termo de busca para filtragem
+filtered_tweets = twitter_stream.filter(lambda tweet: search_term.lower() in tweet.text.lower())
+
+# Total de tweets por update
+NUM_TWEETS = 500
+
+# Função que conecta ao Twitter e retorna um número específico de tweets (NUM_TWEETS)
+def fetch_twitter_data():
+    response = requests.get(filter_url, auth=auth, stream=True)
+    count = 0
+    for line in response.iter_lines():
+        try:
+            if count > NUM_TWEETS:
+                break
+            post = json.loads(line.decode('utf-8'))
+            contents = [post['text']]
+            count += 1
+            yield str(contents)
+        except:
+            result = False
+
+twitter_data = sc.queueStream([ssc.sparkContext.parallelize([0])], default=True)
+stream = twitter_data.transform(tfunc)
+
+# Processar os tweets
+def process_tweet(tweet):
+    # Realizar análise de sentimentos aqui
+    # ...
+    return tweet
+
+processed_tweets = stream.map(process_tweet)
+
+# Imprimir os tweets processados
+processed_tweets.pprint()
+
+# Iniciar o streaming
+ssc.start()
+ssc.awaitTermination()
+
+************************* 2a versão ******************************************
+
+from pyspark.sql import SparkSession
+from pyspark.streaming import StreamingContext
+from pyspark.streaming.twitter import TwitterUtils
+import requests
+import json
+
+# Configurar as credenciais do Twitter
+consumer_key = "<seu_consumer_key>"
+consumer_secret = "<seu_consumer_secret>"
+bearer_token = "<seu_bearer_token>"
+
+# Configurar a sessão do Spark
+spark = SparkSession.builder.appName("TwitterSentimentAnalysis").getOrCreate()
+sc = spark.sparkContext
+sc.setLogLevel("ERROR")
+
+# Configurar o streaming
+ssc = StreamingContext(sc, 5)  # StreamingContext com intervalo de 5 segundos
+
+# Configurar a autenticação do Twitter
+auth_header = {
+    "Authorization": "Bearer " + bearer_token,
+    "Content-Type": "application/json"
+}
+
+# URL do endpoint de streaming filtrado v2 do Twitter
+filter_url = "https://api.twitter.com/2/tweets/search/stream"
+
+# Parâmetros para filtrar os tweets
+search_term = "chatgpt"
+tweet_fields = "tweet.fields=text"
+
+query_params = {
+    "expansions": "author_id",
+    "tweet.fields": tweet_fields,
+    "user.fields": "username",
+    "track": search_term
+}
+
+# Função para processar os tweets
+def process_tweet(tweet):
+    # Realizar análise de sentimentos aqui
+    # ...
+    return tweet
+
+# Função para processar a resposta do streaming
+def process_response(response):
+    for line in response.iter_lines():
+        if line:
+            json_response = json.loads(line)
+            if "data" in json_response:
+                tweet = json_response["data"]
+                processed_tweet = process_tweet(tweet)
+                print(processed_tweet)
+
+# Fazer a solicitação de streaming
+response = requests.get(filter_url, auth=(consumer_key, consumer_secret), headers=auth_header, stream=True, params=query_params)
+
+# Processar a resposta do streaming
+process_response(response)
+
+# Iniciar o streaming
+ssc.start()
+ssc.awaitTermination()
