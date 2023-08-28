@@ -1,0 +1,42 @@
+# Função para verificar o balancemento das classes da coluna labels
+def contar_ocorrencias_classes(dataframe, coluna_classes):
+    contagem_series = dataframe[coluna_classes].value_counts()
+    contagem_df = pd.DataFrame({'Classe': contagem_series.index, 'Contagem': contagem_series.values})
+    return contagem_df
+
+
+# Aplica as função
+ocorrencias = contar_ocorrencias_classes(df_ingles, 'labels')
+
+ocorrencias.head()
+
+
+# Plotar gráfico de pizza das ocorrencias
+plt.figure(figsize=(8, 6))
+plt.pie(ocorrencias['Contagem'], labels=ocorrencias['Classe'], autopct='%1.1f%%', startangle=140)
+plt.axis('equal')  # Mantém a forma do círculo
+plt.title('Distribuição das Classes de Sentimento')
+plt.show()
+
+
+# Função que aplica o balanceamento de classes(SMOTE)
+def balancear_classes_smote(dataframe, coluna_classes):
+    X = dataframe.drop(coluna_classes, axis=1)
+    y = dataframe[coluna_classes]
+    
+    # Mostrar contagem de classes antes do balanceamento
+    print("Contagem de classes antes do balanceamento:", Counter(y))
+    
+    smote = SMOTE(sampling_strategy='auto', random_state=42)
+    X_resampled, y_resampled = smote.fit_resample(X, y)
+    
+    # Mostrar contagem de classes após o balanceamento
+    print("Contagem de classes após o balanceamento:", Counter(y_resampled))
+    
+    # Criar novo DataFrame balanceado
+    balanced_df = pd.concat([X_resampled, y_resampled], axis=1)
+    return balanced_df
+
+
+df_balanceado = balancear_classes_smote(df_ingles, 'labels')
+
